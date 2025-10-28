@@ -59,6 +59,7 @@ const bindEditableEvents = (item, card, row) => {
   const titleEl = card.querySelector('.card-title');
   const dimensionsEl = card.querySelector('.card-dimensions');
   const descriptionEl = card.querySelector('.card-description');
+  const finishEl = card.querySelector('.card-finish');
   const rowName = row.querySelector('.row-name');
   const rowDescription = row.querySelector('.row-description');
   const rowDimensions = row.querySelector('.row-dimensions');
@@ -89,6 +90,11 @@ const bindEditableEvents = (item, card, row) => {
     rowDescription.textContent = item.description;
   });
 
+  finishEl.addEventListener('input', () => {
+    item.finish = finishEl.textContent.trim();
+    rowFinish.textContent = item.finish;
+  });
+
   rowName.addEventListener('input', () => {
     item.title = rowName.textContent.trim();
     titleEl.textContent = item.title;
@@ -106,6 +112,7 @@ const bindEditableEvents = (item, card, row) => {
 
   rowFinish.addEventListener('input', () => {
     item.finish = rowFinish.textContent.trim();
+    finishEl.textContent = item.finish;
   });
 
   rowQty.addEventListener('input', () => {
@@ -124,6 +131,7 @@ const bindEditableEvents = (item, card, row) => {
   rowName.textContent = item.title;
   rowDescription.textContent = item.description;
   rowDimensions.textContent = item.dimensions;
+  finishEl.textContent = item.finish;
   rowTotal.textContent = formatter();
 };
 
@@ -142,6 +150,7 @@ const render = () => {
 
     card.querySelector('.card-title').textContent = item.title;
     card.querySelector('.card-dimensions').textContent = item.dimensions;
+    card.querySelector('.card-finish').textContent = item.finish;
     card.querySelector('.card-description').textContent = item.description;
     card.querySelector('.design-card-image').style.backgroundImage = item.image
       ? `url(${item.image})`
@@ -149,6 +158,7 @@ const render = () => {
 
     row.querySelector('.thumb').style.backgroundImage = card.querySelector('.design-card-image').style.backgroundImage;
     row.querySelector('.row-index').textContent = index + 1;
+    row.querySelector('.row-finish').textContent = item.finish;
 
     const deleteBtn = card.querySelector('.delete');
     deleteBtn.addEventListener('click', () => {
@@ -213,24 +223,47 @@ const toggleView = () => {
 
 toggleViewBtn.addEventListener('click', toggleView);
 
+const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
 const downloadSection = async (element, filename) => {
   const wasHidden = element.classList.contains('hidden');
+
   if (wasHidden) {
     element.classList.remove('hidden');
   }
 
-  const { jsPDF } = window.jspdf;
-  const canvas = await html2canvas(element, {
-    useCORS: true,
-    scale: window.devicePixelRatio,
-  });
-  const imageData = canvas.toDataURL('image/png');
-  const pdf = new jsPDF('l', 'pt', [canvas.width, canvas.height]);
-  pdf.addImage(imageData, 'PNG', 0, 0, canvas.width, canvas.height);
-  pdf.save(filename);
+  try {
+    await raf();
+    await raf();
 
-  if (wasHidden) {
-    element.classList.add('hidden');
+    const jsPDFConstructor = window.jspdf?.jsPDF || window.jsPDF;
+    if (!jsPDFConstructor || typeof html2canvas !== 'function') {
+      throw new Error('Export libraries not available');
+    }
+
+    const canvas = await html2canvas(element, {
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      scale: Math.min(window.devicePixelRatio || 1, 2),
+    });
+
+    const { width, height } = canvas;
+    const orientation = width >= height ? 'landscape' : 'portrait';
+    const pdf = new jsPDFConstructor({
+      orientation,
+      unit: 'pt',
+      format: [width, height],
+    });
+
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
+    pdf.save(filename);
+  } catch (error) {
+    console.error('Failed to export section', error);
+    alert('Unable to download the quotation right now. Please try again.');
+  } finally {
+    if (wasHidden) {
+      element.classList.add('hidden');
+    }
   }
 };
 

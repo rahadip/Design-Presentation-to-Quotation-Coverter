@@ -107,6 +107,12 @@ textarea:focus,
   outline-offset: 2px;
 }
 
+.design-card [contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  font-style: italic;
+}
+
 textarea {
   min-height: 80px;
 }
@@ -227,6 +233,18 @@ textarea {
   margin: 0;
   color: var(--muted);
   line-height: 1.4;
+}
+
+.design-card .card-dimensions {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.design-card .card-finish {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  color: var(--accent);
 }
 
 .design-card .delete {
