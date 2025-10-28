@@ -154,6 +154,37 @@ textarea {
   gap: 0.75rem;
 }
 
+.import-area {
+  gap: 0.75rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+  min-height: 1.2em;
+}
+
+.hint-muted {
+  color: var(--muted);
+}
+
+.hint-info {
+  color: #1f6feb;
+}
+
+.hint-success {
+  color: #1b7f4e;
+}
+
+.hint-warning {
+  color: #a15c00;
+}
+
+.hint-error {
+  color: #b3261e;
+}
+
 .file-input input {
   padding: 0.35rem;
   background: transparent;

@@ -88,6 +88,18 @@
         </ul>
       </details>
 
+      <hr />
+
+      <h2>Import Presentation PDF</h2>
+      <div class="stack import-area">
+        <label class="file-input">
+          Choose PDF
+          <input type="file" id="pdf-upload" accept="application/pdf" />
+        </label>
+        <button type="button" id="import-pdf" class="ghost-button">Extract Items from PDF</button>
+        <p id="import-status" role="status" aria-live="polite" class="hint"></p>
+      </div>
+
       <div class="export-actions">
         <button type="button" id="export-presentation" class="ghost-button">Download Presentation</button>
         <button type="button" id="export-quotation" class="ghost-button">Download Quotation</button>
@@ -199,6 +211,13 @@
     </tr>
   </template>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha512-J3AZL1EFOJRowAIaeXHVaMoHK3iEZ3t9a2m18L02MZxBvk3bqICgAnFjgDGy/bkmh3h8CZfrWMLsZHiKWmUU2Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-w4Z42kYM33vDC1ySW8sZgSNYyyAhakkOCjCTM0QpzHSxcgX8wMceQZa5mTFfbZ1bV7SO7u3nHTwZU3aG8k7+0g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/8bQ3cJxZ1uNqNzL9D8ZTuBHfhGX4klYFSlBV22iJ6OQ932ZK8gCA2MQ0UxREjDsGBzBb1iT6rcO6uHhnv1hHw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="script.js"></script>

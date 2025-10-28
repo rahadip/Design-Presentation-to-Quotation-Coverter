@@ -21,6 +21,9 @@ const presentationView = document.getElementById('presentation-view');
 const quotationView = document.getElementById('quotation-view');
 const exportPresentationBtn = document.getElementById('export-presentation');
 const exportQuotationBtn = document.getElementById('export-quotation');
+const pdfInput = document.getElementById('pdf-upload');
+const importPdfBtn = document.getElementById('import-pdf');
+const importStatus = document.getElementById('import-status');
 
 toggleViewBtn.textContent = 'Show Quotation';
 
@@ -43,6 +46,159 @@ const readImageAsDataUrl = (file) => new Promise((resolve) => {
   reader.onload = (event) => resolve(event.target.result);
   reader.readAsDataURL(file);
 });
+
+const readFileAsArrayBuffer = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.readAsArrayBuffer(file);
+  });
+
+const updateImportStatus = (message, tone = 'muted') => {
+  if (!importStatus) return;
+
+  importStatus.textContent = message;
+  importStatus.className = `hint hint-${tone}`;
+};
+
+const cleanLine = (line) => line.replace(/\s+/g, ' ').trim();
+
+const parseValueFromLine = (line) => {
+  const separatorIndex = line.indexOf(':');
+  if (separatorIndex >= 0) {
+    const value = line.slice(separatorIndex + 1).trim();
+    if (value) return value;
+  }
+
+  const dashIndex = line.indexOf('–');
+  if (dashIndex >= 0) {
+    const value = line.slice(dashIndex + 1).trim();
+    if (value) return value;
+  }
+
+  const hyphenIndex = line.indexOf('-');
+  if (hyphenIndex >= 0) {
+    const value = line.slice(hyphenIndex + 1).trim();
+    if (value) return value;
+  }
+
+  return line.trim();
+};
+
+const parseNumericValue = (value) => {
+  if (!value) return Number.NaN;
+  const cleaned = value.replace(/[^\d.,-]/g, '');
+  if (!cleaned) return Number.NaN;
+
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  let normalized = cleaned;
+
+  if (lastComma > -1 && lastComma > lastDot) {
+    normalized = cleaned.replace(/\./g, '').replace(/,/g, '.');
+  } else {
+    normalized = cleaned.replace(/,/g, '');
+  }
+
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
+
+const findFieldValue = (lines, usedIndexes, keywords) => {
+  for (let index = 0; index < lines.length; index += 1) {
+    if (usedIndexes.has(index)) continue;
+    const line = lines[index];
+    const lower = line.toLowerCase();
+    if (keywords.some((keyword) => lower.includes(keyword))) {
+      usedIndexes.add(index);
+      return parseValueFromLine(line);
+    }
+  }
+  return '';
+};
+
+const extractItemsFromPdf = async (file) => {
+  const buffer = await readFileAsArrayBuffer(file);
+  const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+  const extracted = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    const image = canvas.toDataURL('image/png');
+    canvas.width = 0;
+    canvas.height = 0;
+
+    const textContent = await page.getTextContent();
+    const lines = textContent.items.map((item) => cleanLine(item.str)).filter(Boolean);
+
+    if (!lines.length) continue;
+
+    const usedIndexes = new Set();
+
+    let title = '';
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      const lower = line.toLowerCase();
+      if (
+        lower.includes('size') ||
+        lower.includes('dimension') ||
+        lower.includes('colour') ||
+        lower.includes('color') ||
+        lower.includes('finish') ||
+        lower.includes('glaze') ||
+        lower.includes('qty') ||
+        lower.includes('quantity') ||
+        lower.includes('price')
+      ) {
+        continue;
+      }
+
+      if (/^\d+(\.\d+)?$/.test(line)) continue;
+
+      title = line;
+      usedIndexes.add(i);
+      break;
+    }
+
+    if (!title) {
+      title = `Item ${pageNumber}`;
+    }
+
+    const dimensions = findFieldValue(lines, usedIndexes, ['size', 'dimension']);
+    const finish = findFieldValue(lines, usedIndexes, ['finish', 'color', 'colour', 'glaze']);
+    const quantityRaw = findFieldValue(lines, usedIndexes, ['qty', 'quantity', 'pcs']);
+    const priceRaw = findFieldValue(lines, usedIndexes, ['price', 'unit price', 'cost']);
+
+    const quantityParsed = parseNumericValue(quantityRaw);
+    const priceParsed = parseNumericValue(priceRaw);
+
+    const description = lines
+      .filter((line, index) => !usedIndexes.has(index))
+      .filter((line) => line.length > 2)
+      .slice(0, 6)
+      .join(' ');
+
+    extracted.push({
+      title,
+      description,
+      dimensions,
+      finish,
+      quantity: Number.isFinite(quantityParsed) && quantityParsed > 0 ? Math.round(quantityParsed) : 1,
+      price: Number.isFinite(priceParsed) && priceParsed >= 0 ? priceParsed : 0,
+      image,
+    });
+  }
+
+  return extracted;
+};
 
 const recalcTotals = () => {
   const formatter = currencyFormatter();
@@ -269,6 +425,53 @@ const downloadSection = async (element, filename) => {
 
 exportPresentationBtn.addEventListener('click', () => downloadSection(presentationView, 'presentation.pdf'));
 exportQuotationBtn.addEventListener('click', () => downloadSection(quotationView, 'quotation.pdf'));
+
+if (importPdfBtn) {
+  updateImportStatus('Import a PDF presentation to populate items automatically.');
+
+  importPdfBtn.addEventListener('click', async () => {
+    if (!pdfInput?.files?.length) {
+      updateImportStatus('Please choose a PDF file to import.', 'error');
+      pdfInput?.focus();
+      return;
+    }
+
+    if (!window.pdfjsLib) {
+      updateImportStatus('PDF parsing library not available. Check your connection and try again.', 'error');
+      return;
+    }
+
+    const file = pdfInput.files[0];
+
+    try {
+      importPdfBtn.disabled = true;
+      updateImportStatus('Reading PDF and extracting items…', 'info');
+
+      const imported = await extractItemsFromPdf(file);
+
+      if (!imported.length) {
+        updateImportStatus(
+          'No items were detected. Ensure the PDF contains selectable text and try again.',
+          'warning',
+        );
+        return;
+      }
+
+      items = [...items, ...imported];
+      render();
+
+      updateImportStatus(
+        `Imported ${imported.length} item${imported.length === 1 ? '' : 's'}. Adjust details as needed.`,
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to import PDF', error);
+      updateImportStatus('Unable to import that PDF. Please verify the file and try again.', 'error');
+    } finally {
+      importPdfBtn.disabled = false;
+    }
+  });
+}
 
 const handleDragStart = (event) => {
   const card = event.currentTarget;

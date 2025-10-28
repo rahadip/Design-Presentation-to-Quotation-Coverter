@@ -9,6 +9,7 @@ A single-page web application that helps ceramic and product design studios conv
 - 📋 **Quotation generator** – maintain synchronized table rows with automatic subtotal, tax, and grand-total calculations.
 - 🔄 **Two synchronized views** – toggle between a presentation grid and a structured quotation ready for procurement teams.
 - 📄 **PDF export** – download presentation and quotation snapshots for client handoff.
+- 📥 **PDF item extraction** – upload an existing presentation PDF to auto-populate items with detected names, sizes, colours, and images.
 - 💡 **Fully client-side** – no server dependencies; open the `index.html` file in any modern browser.
 
 ## Getting Started
@@ -16,9 +17,17 @@ A single-page web application that helps ceramic and product design studios conv
 1. Open `index.html` in a browser (double-click the file or use a lightweight static server such as `python -m http.server`).
 2. Fill in the project settings panel with client and quotation details.
 3. Add items by entering descriptions, dimensions, pricing, and uploading reference imagery.
-4. Reorder cards in the presentation grid by dragging them; the quotation table updates accordingly.
-5. Switch between the Presentation and Quotation views using the toggle button.
-6. Export PDF snapshots of either view using the Download buttons.
+4. (Optional) Upload a PDF presentation in the Project Settings panel to extract items automatically.
+5. Reorder cards in the presentation grid by dragging them; the quotation table updates accordingly.
+6. Switch between the Presentation and Quotation views using the toggle button.
+7. Export PDF snapshots of either view using the Download buttons.
+
+## Importing from presentation PDFs
+
+1. In the Project Settings panel, use **Choose PDF** to pick a presentation file that contains the item details.
+2. Select **Extract Items from PDF**. The application will scan each page, capture a thumbnail, and look for product information.
+3. Review the imported cards and adjust any fields directly in either the presentation or quotation view.
+4. If a PDF page does not contain selectable text, add the item manually using the standard item form.
 
 ## Customisation Tips
 
@@ -31,6 +40,7 @@ A single-page web application that helps ceramic and product design studios conv
 
 - HTML5, CSS (with modern layout primitives), and vanilla JavaScript.
 - [`html2canvas`](https://html2canvas.hertzen.com/) & [`jsPDF`](https://github.com/parallax/jsPDF) for PDF exports (loaded from CDN).
+- [`pdf.js`](https://mozilla.github.io/pdf.js/) for client-side parsing of presentation PDFs.
 
 ## License
 
