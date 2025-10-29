@@ -28,8 +28,10 @@ A single-page web application that helps ceramic and product design studios conv
 2. Select **Extract Items from PDF**. The application will scan each page, capture a thumbnail, and look for product information.
 3. Review the imported cards and adjust any fields directly in either the presentation or quotation view.
 4. If a PDF page does not contain selectable text, add the item manually using the standard item form.
-5. If you see a notice that the PDF parser is unavailable, confirm that you are online and retry. The app automatically
-   retries with alternative CDN mirrors for the pdf.js library before showing an error.
+5. If you see a notice that the PDF parser is unavailable, confirm you have network access or place `pdf.min.js` and
+   `pdf.worker.min.js` from the same pdf.js release in `vendor/pdfjs/`. The loader now fetches from multiple CDNs,
+   falls back to inline script injection when SRI is stripped, and will prefer any self-hosted copies before showing an
+   error.
 
 ## Customisation Tips
 
@@ -42,7 +44,8 @@ A single-page web application that helps ceramic and product design studios conv
 
 - HTML5, CSS (with modern layout primitives), and vanilla JavaScript.
 - [`html2canvas`](https://html2canvas.hertzen.com/) & [`jsPDF`](https://github.com/parallax/jsPDF) for PDF exports (loaded from CDN).
-- [`pdf.js`](https://mozilla.github.io/pdf.js/) for client-side parsing of presentation PDFs.
+- [`pdf.js`](https://mozilla.github.io/pdf.js/) for client-side parsing of presentation PDFs (loaded from CDN or
+  optional local copies in `vendor/pdfjs/`).
 
 ## License
 
