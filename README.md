@@ -28,6 +28,8 @@ A single-page web application that helps ceramic and product design studios conv
 2. Select **Extract Items from PDF**. The application will scan each page, capture a thumbnail, and look for product information.
 3. Review the imported cards and adjust any fields directly in either the presentation or quotation view.
 4. If a PDF page does not contain selectable text, add the item manually using the standard item form.
+5. If you see a notice that the PDF parser is unavailable, confirm that you are online and retry. The app automatically
+   retries with alternative CDN mirrors for the pdf.js library before showing an error.
 
 ## Customisation Tips
 

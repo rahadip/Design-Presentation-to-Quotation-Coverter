@@ -30,6 +30,135 @@ toggleViewBtn.textContent = 'Show Quotation';
 let items = [];
 let dragIndex = null;
 
+// Fallback sources for loading the pdf.js runtime when the primary CDN is unavailable.
+const pdfjsScriptSources = [
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+  'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
+];
+
+const scriptLoadPromises = new Map();
+
+const loadExternalScript = (src) => {
+  if (!src) return Promise.reject(new Error('No script source provided.'));
+
+  if (scriptLoadPromises.has(src)) {
+    return scriptLoadPromises.get(src);
+  }
+
+  const promise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+
+    if (existing?.dataset.loaded === 'true') {
+      resolve();
+      return;
+    }
+
+    const script = existing || document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.crossOrigin = 'anonymous';
+    script.referrerPolicy = 'no-referrer';
+
+    script.addEventListener('load', () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    });
+
+    script.addEventListener('error', () => {
+      reject(new Error(`Failed to load script ${src}`));
+    });
+
+    if (!existing) {
+      document.head.appendChild(script);
+    }
+  });
+
+  const trackedPromise = promise.catch((error) => {
+    scriptLoadPromises.delete(src);
+    throw error;
+  });
+
+  scriptLoadPromises.set(src, trackedPromise);
+  return trackedPromise;
+};
+
+const derivePdfWorkerUrl = (scriptUrl) => {
+  if (!scriptUrl) return '';
+
+  try {
+    const url = new URL(scriptUrl, window.location.href);
+    url.hash = '';
+    url.search = '';
+
+    if (url.pathname.endsWith('.min.js')) {
+      url.pathname = url.pathname.replace('.min.js', '.worker.min.js');
+    } else if (url.pathname.endsWith('.js')) {
+      url.pathname = url.pathname.replace('.js', '.worker.js');
+    }
+
+    return url.toString();
+  } catch (error) {
+    console.warn('Unable to derive worker URL from script source', scriptUrl, error);
+  }
+
+  return '';
+};
+
+const applyPdfWorkerSource = (source) => {
+  if (!window.pdfjsLib?.GlobalWorkerOptions) return;
+
+  const derived = derivePdfWorkerUrl(source);
+  const fallback = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = derived || fallback;
+};
+
+let pdfjsLoadAttempt = null;
+
+const ensurePdfjsLib = async () => {
+  if (window.pdfjsLib) {
+    applyPdfWorkerSource(
+      document.querySelector('script[data-pdfjs-src]')?.getAttribute('data-pdfjs-src') ||
+        document.querySelector('script[src*="pdf.js"][src*="pdf"]')?.getAttribute('src') ||
+        pdfjsScriptSources[0],
+    );
+    return window.pdfjsLib;
+  }
+
+  if (!pdfjsLoadAttempt) {
+    pdfjsLoadAttempt = (async () => {
+      const sources = [
+        document.querySelector('script[data-pdfjs-src]')?.getAttribute('data-pdfjs-src'),
+        ...pdfjsScriptSources,
+      ].filter(Boolean);
+
+      for (const source of sources) {
+        try {
+          await loadExternalScript(source);
+        } catch (error) {
+          console.warn('Unable to load PDF.js from source', source, error);
+          continue;
+        }
+
+        if (window.pdfjsLib) {
+          applyPdfWorkerSource(source);
+          return window.pdfjsLib;
+        }
+      }
+
+      const error = new Error('PDF.js library could not be loaded.');
+      error.code = 'PDFJS_MISSING';
+      throw error;
+    })()
+      .finally(() => {
+        pdfjsLoadAttempt = null;
+      });
+  }
+
+  return pdfjsLoadAttempt;
+};
+
 const currencyFormatter = () => new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: currencyInput.value || 'IDR',
@@ -119,8 +248,9 @@ const findFieldValue = (lines, usedIndexes, keywords) => {
 };
 
 const extractItemsFromPdf = async (file) => {
+  const pdfjsLib = await ensurePdfjsLib();
   const buffer = await readFileAsArrayBuffer(file);
-  const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   const extracted = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -436,15 +566,14 @@ if (importPdfBtn) {
       return;
     }
 
-    if (!window.pdfjsLib) {
-      updateImportStatus('PDF parsing library not available. Check your connection and try again.', 'error');
-      return;
-    }
-
     const file = pdfInput.files[0];
 
     try {
       importPdfBtn.disabled = true;
+
+      updateImportStatus('Loading PDF tools…', 'info');
+      await ensurePdfjsLib();
+
       updateImportStatus('Reading PDF and extracting items…', 'info');
 
       const imported = await extractItemsFromPdf(file);
@@ -466,6 +595,15 @@ if (importPdfBtn) {
       );
     } catch (error) {
       console.error('Failed to import PDF', error);
+
+      if (error?.code === 'PDFJS_MISSING') {
+        updateImportStatus(
+          'Unable to load the PDF parser. Check your connection and try again.',
+          'error',
+        );
+        return;
+      }
+
       updateImportStatus('Unable to import that PDF. Please verify the file and try again.', 'error');
     } finally {
       importPdfBtn.disabled = false;
