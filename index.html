@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Presentation to Quotation Converter</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <h1>Design Presentation to Quotation Converter</h1>
+      <p>Build a project quotation directly from your presentation assets.</p>
+    </div>
+    <button id="toggle-view" class="ghost-button" type="button">Toggle Presentation / Quotation</button>
+  </header>
+
+  <main class="layout">
+    <section class="panel controls">
+      <h2>Project Settings</h2>
+      <form id="project-form" class="stack">
+        <label>
+          Project Name
+          <input type="text" id="project-name" placeholder="Hilton Bali Resort" />
+        </label>
+        <label>
+          Client Name
+          <input type="text" id="client-name" placeholder="Paon Resto" />
+        </label>
+        <label>
+          Quote Number
+          <input type="text" id="quote-number" placeholder="KB-2024-001" />
+        </label>
+        <label>
+          Valid Until
+          <input type="date" id="valid-until" />
+        </label>
+        <label>
+          Currency
+          <input type="text" id="currency" value="IDR" maxlength="4" />
+        </label>
+      </form>
+
+      <hr />
+
+      <h2>Add Presentation Item</h2>
+      <form id="item-form" class="stack" autocomplete="off">
+        <label>
+          Item Name
+          <input type="text" id="item-name" placeholder="Main Plate" required />
+        </label>
+        <label>
+          Description / Notes
+          <textarea id="item-description" rows="3" placeholder="Light concrete grey inside, earthy white speckle outside."></textarea>
+        </label>
+        <label class="inline">
+          <span>Dimensions</span>
+          <input type="text" id="item-dimensions" placeholder="Dia. 25 cm, 2 cm H" />
+        </label>
+        <label class="inline">
+          <span>Color / Finish</span>
+          <input type="text" id="item-finish" placeholder="Concrete Grey" />
+        </label>
+        <label class="inline">
+          <span>Quantity</span>
+          <input type="number" id="item-qty" min="1" value="1" />
+        </label>
+        <label class="inline">
+          <span>Unit Price</span>
+          <input type="number" id="item-price" min="0" step="0.01" value="0" />
+        </label>
+        <label class="file-input">
+          Reference Image
+          <input type="file" id="item-image" accept="image/*" />
+        </label>
+        <button class="primary-button" type="submit">Add Item</button>
+      </form>
+
+      <details class="tips" open>
+        <summary>Tips</summary>
+        <ul>
+          <li>Click a card or table row to edit an item.</li>
+          <li>Drag cards to reorder the presentation layout.</li>
+          <li>Use the export buttons to capture a PDF-ready layout.</li>
+        </ul>
+      </details>
+
+      <hr />
+
+      <h2>Import Presentation PDF</h2>
+      <div class="stack import-area">
+        <label class="file-input">
+          Choose PDF
+          <input type="file" id="pdf-upload" accept="application/pdf" />
+        </label>
+        <button type="button" id="import-pdf" class="ghost-button">Extract Items from PDF</button>
+        <p id="import-status" role="status" aria-live="polite" class="hint"></p>
+      </div>
+
+      <div class="export-actions">
+        <button type="button" id="export-presentation" class="ghost-button">Download Presentation</button>
+        <button type="button" id="export-quotation" class="ghost-button">Download Quotation</button>
+      </div>
+    </section>
+
+    <section class="panel presentation" id="presentation-view">
+      <div class="presentation-header">
+        <div>
+          <h2 id="presentation-project">Project Name</h2>
+          <p id="presentation-client">Client Name</p>
+        </div>
+        <div class="branding" contenteditable="true" spellcheck="false">
+          <h3>kevala</h3>
+          <p>Handcrafted Ceramics</p>
+        </div>
+      </div>
+      <div id="design-grid" class="design-grid" aria-live="polite"></div>
+    </section>
+
+    <section class="panel quotation hidden" id="quotation-view">
+      <div class="quotation-header">
+        <div>
+          <h2>Quotation</h2>
+          <p id="quote-project">Project Name</p>
+          <p id="quote-client">Client Name</p>
+        </div>
+        <div class="quote-details">
+          <p><strong>Quote No.</strong> <span id="quote-number-display">KB-2024-001</span></p>
+          <p><strong>Valid Until</strong> <span id="quote-validity">—</span></p>
+        </div>
+      </div>
+
+      <div class="responsive-table">
+        <table id="quotation-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Image</th>
+              <th>Item</th>
+              <th>Description</th>
+              <th>Dimensions</th>
+              <th>Finish</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="7">Subtotal</td>
+              <td id="subtotal">0</td>
+            </tr>
+            <tr>
+              <td colspan="7">Tax (11%)</td>
+              <td id="tax">0</td>
+            </tr>
+            <tr>
+              <td colspan="7"><strong>Grand Total</strong></td>
+              <td id="grand-total">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <section class="terms">
+        <h3>Terms and Notes</h3>
+        <textarea id="terms" rows="5">Please remember all designs, even at prototyping stage, are proprietary. No design may be reproduced without express written consent.</textarea>
+      </section>
+
+      <section class="signatures">
+        <div>
+          <p>Prepared By</p>
+          <div class="signature" contenteditable="true" spellcheck="false">Designer Name</div>
+        </div>
+        <div>
+          <p>Approved By</p>
+          <div class="signature" contenteditable="true" spellcheck="false">Client Name</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <template id="design-card-template">
+    <article class="design-card" draggable="true">
+      <button class="delete" type="button" aria-label="Remove item">×</button>
+      <div class="design-card-image"></div>
+      <div class="design-card-body">
+        <h3 contenteditable="true" class="card-title"></h3>
+        <p contenteditable="true" class="card-dimensions" data-placeholder="Size / Dimensions"></p>
+        <p contenteditable="true" class="card-finish" data-placeholder="Color / Finish"></p>
+        <p contenteditable="true" class="card-description"></p>
+      </div>
+    </article>
+  </template>
+
+  <template id="quotation-row-template">
+    <tr>
+      <td class="row-index"></td>
+      <td><div class="thumb"></div></td>
+      <td contenteditable="true" class="row-name"></td>
+      <td contenteditable="true" class="row-description"></td>
+      <td contenteditable="true" class="row-dimensions"></td>
+      <td contenteditable="true" class="row-finish"></td>
+      <td><input type="number" class="row-qty" min="1" /></td>
+      <td><input type="number" class="row-price" min="0" step="0.01" /></td>
+      <td class="row-total"></td>
+    </tr>
+  </template>
+
+    <script
+      data-pdfjs-src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+      src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      if (window.pdfjsLib?.GlobalWorkerOptions) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-w4Z42kYM33vDC1ySW8sZgSNYyyAhakkOCjCTM0QpzHSxcgX8wMceQZa5mTFfbZ1bV7SO7u3nHTwZU3aG8k7+0g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/8bQ3cJxZ1uNqNzL9D8ZTuBHfhGX4klYFSlBV22iJ6OQ932ZK8gCA2MQ0UxREjDsGBzBb1iT6rcO6uHhnv1hHw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="script.js"></script>
+</body>
+</html>
