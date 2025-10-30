@@ -378,10 +378,38 @@ const findFieldValue = (lines, usedIndexes, keywords) => {
   return '';
 };
 
+const loadPdfDocument = async (pdfjsLib, buffer) => {
+  const workerRetryMessages = ['worker', 'postmessage', 'setting up fake worker'];
+
+  try {
+    return await pdfjsLib.getDocument({ data: buffer }).promise;
+  } catch (error) {
+    const message = `${error?.message || error}`.toLowerCase();
+    const isWorkerIssue = workerRetryMessages.some((snippet) => message.includes(snippet));
+
+    if (!isWorkerIssue) {
+      throw error;
+    }
+
+    console.warn('Retrying PDF parse without worker context due to error', error);
+
+    try {
+      if (pdfjsLib.GlobalWorkerOptions) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      }
+      pdfjsLib.disableWorker = true;
+      return await pdfjsLib.getDocument({ data: buffer, useWorker: false }).promise;
+    } catch (retryError) {
+      console.error('Retry without worker failed', retryError);
+      throw retryError;
+    }
+  }
+};
+
 const extractItemsFromPdf = async (file) => {
   const pdfjsLib = await ensurePdfjsLib();
   const buffer = await readFileAsArrayBuffer(file);
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pdf = await loadPdfDocument(pdfjsLib, buffer);
   const extracted = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
